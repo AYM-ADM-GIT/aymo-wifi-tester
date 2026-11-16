@@ -1,5 +1,5 @@
 # Launch-WiFiApp.ps1
-# WiFi Password Tester v4 - Smart Launcher
+# Aymo WiFi Tester v4 - Smart Launcher
 # 1. Enables Windows Location services automatically
 # 2. Launches the app as Administrator (UAC prompt - just click Yes)
 # 3. Waits for you to close the app
@@ -9,15 +9,15 @@ $ErrorActionPreference = "Continue"
 
 # === Paths (auto-detect folder where this script lives) ===
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$exePath = Join-Path $scriptDir "WiFi Password Tester v4.exe"
+$exePath = Join-Path $scriptDir "Aymo WiFi Tester v4.exe"
 
 if (-not (Test-Path $exePath)) {
     # Fallback: look in dist folder
-    $exePath = Join-Path $scriptDir "dist\WiFi Password Tester v4.exe"
+    $exePath = Join-Path $scriptDir "dist\Aymo WiFi Tester v4.exe"
 }
 
 if (-not (Test-Path $exePath)) {
-    Write-Host "ERROR: Could not find 'WiFi Password Tester v4.exe'" -ForegroundColor Red
+    Write-Host "ERROR: Could not find 'Aymo WiFi Tester v4.exe'" -ForegroundColor Red
     Write-Host "Expected at: $exePath" -ForegroundColor Yellow
     pause
     exit 1
@@ -48,12 +48,12 @@ try {
 }
 
 # === Step 2: Launch the app as Administrator (triggers UAC prompt) ===
-Write-Host "Launching WiFi Password Tester v4 as Administrator..." -ForegroundColor Cyan
+Write-Host "Launching Aymo WiFi Tester v4 as Administrator..." -ForegroundColor Cyan
 Write-Host "When the UAC window appears, click YES to continue." -ForegroundColor Yellow
 
 try {
     $process = Start-Process -FilePath $exePath -Verb RunAs -Wait -PassThru
-    Write-Host "App closed. Exit code: $($process.ExitCode)" -ForegroundColor Cyan
+    Write-Host "Aymo WiFi Tester v4 closed. Exit code: $($process.ExitCode)" -ForegroundColor Cyan
 } catch {
     Write-Host "Failed to launch app: $_" -ForegroundColor Red
     pause

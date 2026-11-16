@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-WiFi Password Tester v4
+Aymo WiFi Tester v4
 Scans WiFi networks WITHOUT requiring Windows Location services.
 Works directly when run as Administrator.
 Uses only Python standard library (tkinter + subprocess).
@@ -275,7 +275,7 @@ class PulseIndicator(tk.Canvas):
 class WifiPasswordTesterV4:
     def __init__(self, root):
         self.root = root
-        self.root.title("WiFi Password Tester v4")
+        self.root.title("Aymo WiFi Tester v4")
         self.root.geometry("1000x700")
         self.root.minsize(900, 600)
 
@@ -349,7 +349,7 @@ class WifiPasswordTesterV4:
         icon_canvas.pack(side=tk.LEFT, padx=(0, 10))
         self.draw_wifi_icon(icon_canvas, ModernStyle.ACCENT_BLUE)
 
-        title_label = ttk.Label(title_frame, text="WiFi Password Tester v4",
+        title_label = ttk.Label(title_frame, text="Aymo WiFi Tester v4",
                                font=("Segoe UI", 18, "bold"))
         title_label.pack(side=tk.LEFT)
 
@@ -516,11 +516,11 @@ class WifiPasswordTesterV4:
                                      font=("Segoe UI", 9))
         self.status_label.pack(side=tk.LEFT)
 
-        version_label = ttk.Label(status_frame, text="v4.0.0 - No Location Required",
+        version_label = ttk.Label(status_frame, text="Aymo v4.0.0 - No Location Required",
                                  font=("Segoe UI", 8), foreground=ModernStyle.TEXT_MUTED)
         version_label.pack(side=tk.RIGHT)
 
-        self.log("WiFi Password Tester v4 initialized", "info")
+        self.log("Aymo WiFi Tester v4 initialized", "info")
         if not self.is_admin:
             self.log("ℹ Running as standard user. Basic scan works without Admin.", "info")
             self.log("   Right-click run.bat → 'Run as administrator' for password testing.", "info")

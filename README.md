@@ -1,4 +1,4 @@
-# WiFi Password Tester v4
+# Aymo WiFi Tester v4
 
 A desktop application for Windows that scans available WiFi networks and tests passwords from your local database — without requiring Windows Location services for scanning.
 
