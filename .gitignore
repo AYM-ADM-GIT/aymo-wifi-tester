@@ -1,0 +1,28 @@
+# Build outputs
+build/
+dist/
+*.exe
+*.spec
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# App data (created at runtime)
+.wifi_password_db.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
