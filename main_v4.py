@@ -28,7 +28,9 @@ CREATE_NO_WINDOW = 0x08000000 if os.name == 'nt' else 0
 
 class DesignTokens:
     BG_APP = "#0a0c12"
+    BG_SECONDARY = "#0f121a"
     BG_SIDEBAR = "#0f121a"
+    BG_SECONDARY = "#101521"
     BG_CARD = "#131824"
     BG_CARD_HOVER = "#1a2030"
     BG_INPUT = "#0e1118"
@@ -787,6 +789,26 @@ class AymoWiFiTesterV5:
     # ------------------------------------------------------------------
     # Password DB
     # ------------------------------------------------------------------
+    def load_sample_passwords(self):
+        """Seed the password database with the bundled sample list on first run."""
+        sample_path = Path(__file__).parent / "sample_passwords.json"
+        if sample_path.exists():
+            try:
+                with open(sample_path, 'r', encoding='utf-8') as f:
+                    samples = json.load(f)
+                if isinstance(samples, dict):
+                    samples = samples.get("passwords", [])
+                for pwd in samples:
+                    if isinstance(pwd, str) and pwd not in self.password_db:
+                        self.password_db.append(pwd)
+                self.save_password_db()
+                self.refresh_password_list()
+                self.log(f"Loaded {len(samples)} sample passwords", "info")
+                return
+            except Exception as e:
+                self.log(f"Could not load sample passwords: {e}", "warning")
+        self.log("No sample password file found - add passwords manually", "warning")
+
     def load_password_db(self):
         if self.db_path.exists():
             try:
